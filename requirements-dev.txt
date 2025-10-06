@@ -87,3 +87,6 @@ pygments
 jupyterlite-core
 jupyterlite-pyodide-kernel
 tzdata>=2023.3
+google.generativeai
+pypi_simple
+google.api_core.exceptions
