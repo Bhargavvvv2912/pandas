@@ -1,0 +1,79 @@
+name: Autonomous Dependency Updater for Pandas
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: '0 0 */3 * *' # Runs every 3 days
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        # We run all commands from the root of our experiment directory
+        working-directory: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout Experiment Repository
+        uses: actions/checkout@v4
+
+      - name: Clone Pandas Repository
+        run: git clone https://github.com/pandas-dev/pandas.git
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          # The path to the pip cache directory
+          path: ~/.cache/pip
+          # The key invalidates the cache if the source requirements file changes
+          key: ${{ runner.os }}-pip-${{ hashFiles('pandas/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Agent Dependencies
+        run: pip install google-generativeai pypi-simple packaging
+
+      - name: Ensure Agent has the latest Google AI Library
+        run: pip install --upgrade google-generativeai
+
+      - name: Run the Autonomous Agent
+        run: python dependency_agent.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      
+      - name: Commit and push changes if any
+        run: |
+          git config --global user.name 'AURA Dependency Agent'
+          git config --global user.email 'aura-agent@users.noreply.github.com'
+          
+          # The agent now operates on a file inside the 'pandas' directory
+          TARGET_FILE="pandas/requirements-dev.txt"
+          
+          # Check if the target file was modified by the agent
+          if git diff --quiet $TARGET_FILE; then
+            echo "No dependency changes to commit."
+            exit 0
+          fi
+          
+          echo "Dependencies updated for Pandas. Committing changes."
+          
+          # Prepare the commit body, using metrics if the agent produced them
+          COMMIT_BODY="Automated dependency updates for the Pandas project."
+          if [ -f metrics_output.txt ]; then
+            COMMIT_BODY=$(cat metrics_output.txt)
+          fi
+          
+          # Add the modified requirements file to the commit
+          git add $TARGET_FILE
+          
+          # Commit with a clear message and [skip ci] to prevent infinite loops
+          git commit -m "chore(deps): Autonomously update pandas dependencies [skip ci]" -m "$COMMIT_body"
+          
+          # We only need to push the main experiment repo, which tracks the pandas repo as a sub-directory
+          git push
