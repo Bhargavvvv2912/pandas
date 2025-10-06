@@ -1,9 +1,9 @@
-name: Autonomous Dependency Updater for Pandas
+name: Autonomous Dependency Updater
 
 on:
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 */3 * *' # Runs every 3 days
+    - cron: '0 0 */3 * *'
 
 jobs:
   update-dependencies:
@@ -11,7 +11,6 @@ jobs:
     
     defaults:
       run:
-        # We run all commands from the root of our experiment directory
         working-directory: ${{ github.workspace }}
 
     steps:
@@ -19,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Clone Pandas Repository
+        # We need the code to be present for the agent to analyze it
         run: git clone https://github.com/pandas-dev/pandas.git
 
       - name: Set up Python 3.11
@@ -26,23 +26,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Cache pip packages
-        uses: actions/cache@v3
-        with:
-          # The path to the pip cache directory
-          path: ~/.cache/pip
-          # The key invalidates the cache if the source requirements file changes
-          key: ${{ runner.os }}-pip-${{ hashFiles('pandas/requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install Agent Dependencies
+      - name: Install agent dependencies
         run: pip install google-generativeai pypi-simple packaging
 
-      - name: Ensure Agent has the latest Google AI Library
+      - name: Update Google AI Library
         run: pip install --upgrade google-generativeai
 
       - name: Run the Autonomous Agent
+        # The agent will run its own internal validation loop
         run: python dependency_agent.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -52,10 +43,8 @@ jobs:
           git config --global user.name 'AURA Dependency Agent'
           git config --global user.email 'aura-agent@users.noreply.github.com'
           
-          # The agent now operates on a file inside the 'pandas' directory
           TARGET_FILE="pandas/requirements-dev.txt"
           
-          # Check if the target file was modified by the agent
           if git diff --quiet $TARGET_FILE; then
             echo "No dependency changes to commit."
             exit 0
@@ -63,17 +52,48 @@ jobs:
           
           echo "Dependencies updated for Pandas. Committing changes."
           
-          # Prepare the commit body, using metrics if the agent produced them
           COMMIT_BODY="Automated dependency updates for the Pandas project."
           if [ -f metrics_output.txt ]; then
             COMMIT_BODY=$(cat metrics_output.txt)
           fi
           
-          # Add the modified requirements file to the commit
           git add $TARGET_FILE
           
-          # Commit with a clear message and [skip ci] to prevent infinite loops
-          git commit -m "chore(deps): Autonomously update pandas dependencies [skip ci]" -m "$COMMIT_body"
+          git commit -m "chore(deps): Autonomously update pandas dependencies [skip ci]" -m "$COMMIT_BODY"
           
-          # We only need to push the main experiment repo, which tracks the pandas repo as a sub-directory
+          rm -f metrics_output.txt
+
           git push
+
+  validate-on-other-versions:
+    # This job is the final health check, just like in your original workflow.
+    # It runs only after the main job has finished and potentially pushed a commit.
+    needs: update-dependencies
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+    strategy:
+      # It runs the same validation across multiple Python versions.
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Clone Pandas Repository
+        run: git clone https://github.com/pandas-dev/pandas.git
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install updated dependencies
+        # It installs the final, committed requirements file from the previous job.
+        run: pip install -r pandas/requirements-dev.txt
+
+      - name: Run validation on Python ${{ matrix.python-version }}
+        # It runs the new validation script for Pandas.
+        run: python validation.py
