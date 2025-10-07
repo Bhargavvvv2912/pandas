@@ -17,22 +17,6 @@ jobs:
       - name: Checkout Experiment Repository
         uses: actions/checkout@v4
 
-      # --- ADD THIS NEW PREPARATION STEP ---
-      - name: Prepare Unconstrained Requirements File
-        run: |
-          # The path to the original messy file
-          ORIGINAL_REQS="requirements-dev.txt"
-          
-          # The path where the agent expects to find the file
-          AGENT_REQS="requirements-dev.txt"
-
-          # Use a simple regex to remove all version constraints and save the cleaned file
-          # This keeps only the package names.
-          grep -oE '^[a-zA-Z0-9\-_]+' $ORIGINAL_REQS > $AGENT_REQS
-          
-          echo "Cleaned requirements file for agent:"
-          cat $AGENT_REQS
-      # --- END OF NEW STEP ---
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
