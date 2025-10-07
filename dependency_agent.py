@@ -7,7 +7,7 @@ from agent_logic import DependencyAgent
 
 # --- Configuration for the Pandas Experiment ---
 AGENT_CONFIG = {
-    "REQUIREMENTS_FILE": "pandas/pandas/requirements-dev.txt",
+    "REQUIREMENTS_FILE": "requirements-dev.txt",
     ##"PRIMARY_REQUIREMENTS_FILE": "primary_requirements.txt", # We'll create an empty one for this experiment
     "METRICS_OUTPUT_FILE": "metrics_output.txt",
     "MAX_LLM_BACKTRACK_ATTEMPTS": 3,
