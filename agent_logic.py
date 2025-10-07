@@ -53,11 +53,11 @@ class DependencyAgent:
         match = re.match(r'([a-zA-Z0-9\-_]+)', spec_line)
         return match.group(1) if match else None
 
-    def _load_primary_packages(self):
-        primary_path = Path(self.config["PRIMARY_REQUIREMENTS_FILE"])
-        if not primary_path.exists(): return set()
-        with open(primary_path, "r") as f:
-            return {self._get_package_name_from_spec(line.strip()) for line in f if line.strip() and not line.startswith('#')}
+    # def _load_primary_packages(self):
+    #     primary_path = Path(self.config["PRIMARY_REQUIREMENTS_FILE"])
+    #     if not primary_path.exists(): return set()
+    #     with open(primary_path, "r") as f:
+    #         return {self._get_package_name_from_spec(line.strip()) for line in f if line.strip() and not line.startswith('#')}
 
     def _get_requirements_state(self):
         if not self.requirements_path.exists(): sys.exit(f"Error: {self.config['REQUIREMENTS_FILE']} not found.")
