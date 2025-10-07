@@ -19,7 +19,7 @@ class DependencyAgent:
         self.llm = llm_client
         self.pypi = PyPISimple()
         self.requirements_path = Path(config["REQUIREMENTS_FILE"])
-        self.primary_packages = self._load_primary_packages()
+        # self.primary_packages = self._load_primary_packages()
         self.llm_available = True
         self.usage_scores = self._calculate_risk_scores()
 
